@@ -12,9 +12,13 @@ public interface IProductoService {
 
     public List<ProductoResponse> getAll(boolean incluirInactivos);
 
+    public List<ProductoResponse> getBajoStock();
+
     public ProductoResponse update(Long id, ProductoRequest request);
 
     public ProductoResponse descontarStock(Long id, Long cantidad);
+
+    public ProductoResponse reponerStock(Long id, Long cantidad);
 
     public ProductoResponse activar(Long id);
 

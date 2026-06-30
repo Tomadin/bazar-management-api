@@ -5,6 +5,11 @@ export function getProductos(incluirInactivos = false) {
   return api.get(`/productos?incluirInactivos=${incluirInactivos}`)
 }
 
+// Productos ACTIVO con stock bajo (cantidadDisponible < 15).
+export function getProductosBajoStock() {
+  return api.get('/productos/falta_stock')
+}
+
 export function getProducto(id) {
   return api.get(`/productos/${id}`)
 }
@@ -17,6 +22,11 @@ export function crearProducto(producto) {
 // Descuenta stock. body: { cantidad: number > 0 }
 export function descontarStock(id, cantidad) {
   return api.patch(`/productos/${id}/stock`, { cantidad })
+}
+
+// Aumenta el stock (reposición). body: { cantidad: number > 0 } -> ProductoResponse
+export function reponerStock(id, cantidad) {
+  return api.patch(`/productos/${id}/stock/reponer`, { cantidad })
 }
 
 // Reactiva un producto inactivo.

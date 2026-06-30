@@ -177,7 +177,6 @@ h1 {
   flex: 1;
   min-width: 0;
   padding: 1.75rem 2rem;
-  max-width: 1100px;
 }
 .page-header {
   display: flex;
@@ -268,6 +267,10 @@ tbody tr.inactivo {
   background: var(--danger-soft);
   color: var(--danger);
 }
+.badge-bajo {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
 
 /* ---------- Botones ---------- */
 button {
@@ -321,6 +324,7 @@ button:disabled {
 .btn-sm {
   padding: 0.28rem 0.65rem;
   font-size: 0.85rem;
+  white-space: nowrap;
 }
 .btn-ghost {
   background: transparent;
@@ -555,6 +559,67 @@ input {
 .modal-body {
   padding: 1.25rem;
   overflow-y: auto;
+}
+
+/* ---------- Reportes ---------- */
+.reportes {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+/* Cards de métricas arriba; la tabla de bajo stock va a lo ancho debajo. */
+.reportes-top {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+.report-block {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+}
+.report-title {
+  font-size: 1rem;
+  margin: 0 0 1rem;
+}
+.report-block .table-wrap {
+  box-shadow: none;
+  overflow-x: auto;
+}
+.report-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  background: #fbfbfa;
+}
+.report-card-sub {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.stat-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.stat-valor {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
 }
 
 /* ---------- Detalle de venta (fila expandible) ---------- */

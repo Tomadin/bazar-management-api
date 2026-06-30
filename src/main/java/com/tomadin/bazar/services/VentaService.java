@@ -2,6 +2,9 @@ package com.tomadin.bazar.services;
 
 import com.tomadin.bazar.dtos.request.ItemVentaRequest;
 import com.tomadin.bazar.dtos.request.VentaRequest;
+import com.tomadin.bazar.dtos.response.DetalleVentaResponse;
+import com.tomadin.bazar.dtos.response.MayorVentaResponse;
+import com.tomadin.bazar.dtos.response.ResumenVentasDiaResponse;
 import com.tomadin.bazar.dtos.response.VentaResponse;
 import com.tomadin.bazar.entities.Cliente;
 import com.tomadin.bazar.entities.DetalleVenta;
@@ -13,6 +16,7 @@ import com.tomadin.bazar.exceptions.NotFoundException;
 import com.tomadin.bazar.mappers.VentaMapper;
 import com.tomadin.bazar.repositories.ClienteRepository;
 import com.tomadin.bazar.repositories.ProductoRepository;
+import com.tomadin.bazar.repositories.ResumenVentasProjection;
 import com.tomadin.bazar.repositories.VentaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -127,5 +131,41 @@ public class VentaService implements IVentaService {
         venta.setEstado(EstadoVenta.ANULADA);
         Venta anulada = ventaRepository.save(venta);
         return ventaMapper.toResponse(anulada);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DetalleVentaResponse> getProductosDeVenta(Long codigoVenta) {
+        Venta venta = ventaRepository.findById(codigoVenta)
+                .orElseThrow(() -> new NotFoundException(
+                        "Venta no encontrada con el ID: " + codigoVenta));
+        return ventaMapper.toDetalleResponses(venta);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResumenVentasDiaResponse getResumenDelDia(LocalDate fecha) {
+        ResumenVentasProjection resumen = ventaRepository.resumenPorFecha(fecha, EstadoVenta.ACTIVA);
+        return new ResumenVentasDiaResponse(fecha, resumen.getCantidad(), resumen.getMonto());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MayorVentaResponse getMayorVenta() {
+        Venta venta = ventaRepository.findTopByEstadoOrderByTotalDesc(EstadoVenta.ACTIVA)
+                .orElseThrow(() -> new NotFoundException("No hay ventas registradas."));
+
+        long cantidadProductos = venta.getDetalles().stream()
+                .mapToLong(DetalleVenta::getCantidad)
+                .sum();
+
+        Cliente cliente = venta.getCliente();
+        return new MayorVentaResponse(
+                venta.getCodigoVenta(),
+                venta.getTotal(),
+                cantidadProductos,
+                cliente.getNombre(),
+                cliente.getApellido()
+        );
     }
 }

@@ -17,3 +17,22 @@ export function crearVenta(venta) {
 export function cancelarVenta(id) {
   return api.patch(`/ventas/${id}/cancelar`)
 }
+
+// --- Reportes / consultas ---
+
+// Resumen de ventas ACTIVA de un día. fecha en ISO yyyy-MM-dd.
+// -> { fecha, cantidadVentas, montoTotal }
+export function getResumenVentasDia(fecha) {
+  return api.get(`/ventas/fecha/${fecha}`)
+}
+
+// Venta de mayor monto (solo ACTIVA). 404 si no hay ventas.
+// -> { codigoVenta, total, cantidadProductos, nombreCliente, apellidoCliente }
+export function getMayorVenta() {
+  return api.get('/ventas/mayor_venta')
+}
+
+// Renglones de una venta. (Opcional: GET /ventas/{id} ya trae 'detalles'.)
+export function getProductosDeVenta(codigoVenta) {
+  return api.get(`/ventas/productos/${codigoVenta}`)
+}

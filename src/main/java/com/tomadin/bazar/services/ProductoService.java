@@ -15,6 +15,8 @@ import java.util.List;
 
 @Service
 public class ProductoService implements IProductoService {
+    private static final long UMBRAL_BAJO_STOCK = 15L;
+
     private final ProductoRepository productoRepository;
     private final ProductoMapper productoMapper;
 
@@ -52,6 +54,16 @@ public class ProductoService implements IProductoService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ProductoResponse> getBajoStock() {
+        return productoRepository
+                .findByEstadoAndCantidadDisponibleLessThan(EstadoProducto.ACTIVO, UMBRAL_BAJO_STOCK)
+                .stream()
+                .map(productoMapper::toResponse)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public ProductoResponse update(Long id, ProductoRequest request) {
         Producto producto = productoRepository.findById(id)
@@ -77,6 +89,22 @@ public class ProductoService implements IProductoService {
         }
 
         producto.descontar(cantidad); // valida stock (409) y descuenta en un solo lugar
+
+        Producto actualizado = productoRepository.save(producto);
+        return productoMapper.toResponse(actualizado);
+    }
+
+    @Override
+    @Transactional
+    public ProductoResponse reponerStock(Long id, Long cantidad) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Producto no encontrado con el ID: " + id));
+
+        if (!producto.estaActivo()) {
+            throw new ConflictException("El producto " + id + " está inactivo; no se puede ajustar su stock.");
+        }
+
+        producto.reponer(cantidad);
 
         Producto actualizado = productoRepository.save(producto);
         return productoMapper.toResponse(actualizado);

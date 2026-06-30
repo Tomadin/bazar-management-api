@@ -4,6 +4,7 @@ const enlaces = [
   { to: '/productos', label: 'Productos', ico: 'P' },
   { to: '/clientes', label: 'Clientes', ico: 'C' },
   { to: '/ventas', label: 'Ventas', ico: 'V' },
+  { to: '/reportes', label: 'Reportes', ico: 'R' },
 ]
 
 // Sidebar lateral colapsable. Recibe el estado de colapso y el toggle desde App.

@@ -6,6 +6,8 @@ import com.tomadin.bazar.entities.DetalleVenta;
 import com.tomadin.bazar.entities.Venta;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 public class VentaMapper {
     private final ClienteMapper clienteMapper;
@@ -31,6 +33,13 @@ public class VentaMapper {
                         .toList()
         );
         return response;
+    }
+
+    public List<DetalleVentaResponse> toDetalleResponses(Venta venta) {
+        return venta.getDetalles()
+                .stream()
+                .map(this::toDetalleResponse)
+                .toList();
     }
 
     private DetalleVentaResponse toDetalleResponse(DetalleVenta detalle) {

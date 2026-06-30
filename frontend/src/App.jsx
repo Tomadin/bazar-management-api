@@ -4,6 +4,7 @@ import NavBar from './components/NavBar.jsx'
 import ProductosPage from './pages/ProductosPage.jsx'
 import ClientesPage from './pages/ClientesPage.jsx'
 import VentasPage from './pages/VentasPage.jsx'
+import ReportesPage from './pages/ReportesPage.jsx'
 
 export default function App() {
   const [colapsada, setColapsada] = useState(
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/productos" element={<ProductosPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/ventas" element={<VentasPage />} />
+          <Route path="/reportes" element={<ReportesPage />} />
           <Route path="*" element={<Navigate to="/productos" replace />} />
         </Routes>
       </main>

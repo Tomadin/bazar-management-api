@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { useApi } from '../hooks/useApi.js'
 import {
   getProductos,
+  getProductosBajoStock,
   crearProducto,
   descontarStock,
   activarProducto,
@@ -12,8 +13,12 @@ import Loading from '../components/Loading.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
 import Modal from '../components/Modal.jsx'
 import Field from '../components/Field.jsx'
+import ReponerStockModal from '../components/ReponerStockModal.jsx'
+import { formatMoneda } from '../utils/format.js'
 
 const FORM_VACIO = { nombre: '', marca: '', costo: '', cantidadDisponible: '' }
+// Umbral de bajo stock (coincide con el criterio del backend en /falta_stock).
+const UMBRAL_BAJO_STOCK = 15
 
 // Validación local replicando las reglas del backend (feedback inmediato).
 function validar(form) {
@@ -43,10 +48,15 @@ function validar(form) {
 
 export default function ProductosPage() {
   const [incluirInactivos, setIncluirInactivos] = useState(false)
-  const fetcher = useCallback(() => getProductos(incluirInactivos), [incluirInactivos])
+  const [soloBajoStock, setSoloBajoStock] = useState(false)
+  const fetcher = useCallback(
+    () => (soloBajoStock ? getProductosBajoStock() : getProductos(incluirInactivos)),
+    [soloBajoStock, incluirInactivos],
+  )
   const { data: productos, loading, error, reload } = useApi(fetcher)
 
   const [modalAbierto, setModalAbierto] = useState(false)
+  const [reponiendo, setReponiendo] = useState(null)
   const [accionError, setAccionError] = useState(null)
   // Cantidad a descontar por producto: { [id]: string }
   const [descuentos, setDescuentos] = useState({})
@@ -81,7 +91,16 @@ export default function ProductosPage() {
           <label className="toggle">
             <input
               type="checkbox"
+              checked={soloBajoStock}
+              onChange={(e) => setSoloBajoStock(e.target.checked)}
+            />
+            Ver solo bajo stock
+          </label>
+          <label className="toggle">
+            <input
+              type="checkbox"
               checked={incluirInactivos}
+              disabled={soloBajoStock}
               onChange={(e) => setIncluirInactivos(e.target.checked)}
             />
             Incluir inactivos
@@ -127,8 +146,15 @@ export default function ProductosPage() {
                     <td>{p.id}</td>
                     <td>{p.nombre}</td>
                     <td>{p.marca}</td>
-                    <td>${p.costo?.toFixed(2)}</td>
-                    <td>{p.cantidadDisponible}</td>
+                    <td>{formatMoneda(p.costo)}</td>
+                    <td>
+                      {p.cantidadDisponible}
+                      {activo && p.cantidadDisponible < UMBRAL_BAJO_STOCK && (
+                        <span className="badge badge-bajo" style={{ marginLeft: '0.4rem' }}>
+                          stock bajo
+                        </span>
+                      )}
+                    </td>
                     <td>
                       <span className={`badge ${activo ? 'badge-activo' : 'badge-inactivo'}`}>
                         {p.estado}
@@ -150,6 +176,9 @@ export default function ProductosPage() {
                             />
                             <button className="btn-sm btn-ghost" onClick={() => descontar(p.id)}>
                               Descontar
+                            </button>
+                            <button className="btn-sm btn-ghost" onClick={() => setReponiendo(p)}>
+                              Reponer
                             </button>
                             <button
                               className="btn-sm btn-danger"
@@ -184,6 +213,17 @@ export default function ProductosPage() {
           onClose={() => setModalAbierto(false)}
           onCreado={async () => {
             setModalAbierto(false)
+            await reload()
+          }}
+        />
+      )}
+
+      {reponiendo && (
+        <ReponerStockModal
+          producto={reponiendo}
+          onClose={() => setReponiendo(null)}
+          onRepuesto={async () => {
+            setReponiendo(null)
             await reload()
           }}
         />

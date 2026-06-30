@@ -457,6 +457,15 @@
           }
         },
         {
+          "name": "Reponer stock (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"cantidad\": 10\n}" },
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}/stock/reponer", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}", "stock", "reponer"] }
+          }
+        },
+        {
           "name": "Desactivar producto / soft-delete (204)",
           "request": {
             "method": "DELETE",
@@ -488,6 +497,43 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"cantidad\": -3\n}" },
             "url": { "raw": "{{baseUrl}}/productos/{{productoId}}/stock", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}", "stock"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consultas / Reportes",
+      "item": [
+        {
+          "name": "Productos con bajo stock (< 15)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos/falta_stock", "host": ["{{baseUrl}}"], "path": ["productos", "falta_stock"] }
+          }
+        },
+        {
+          "name": "Productos de una venta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/ventas/productos/{{ventaId}}", "host": ["{{baseUrl}}"], "path": ["ventas", "productos", "{{ventaId}}"] }
+          }
+        },
+        {
+          "name": "Resumen de ventas de un día",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/ventas/fecha/2026-06-30", "host": ["{{baseUrl}}"], "path": ["ventas", "fecha", "2026-06-30"] }
+          }
+        },
+        {
+          "name": "Mayor venta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/ventas/mayor_venta", "host": ["{{baseUrl}}"], "path": ["ventas", "mayor_venta"] }
           }
         }
       ]

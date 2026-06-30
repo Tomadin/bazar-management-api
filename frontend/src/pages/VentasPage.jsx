@@ -7,10 +7,7 @@ import { ApiError } from '../api/http.js'
 import Loading from '../components/Loading.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
 import Modal from '../components/Modal.jsx'
-
-function formatMoneda(n) {
-  return `$${Number(n ?? 0).toFixed(2)}`
-}
+import { formatMoneda, formatFecha } from '../utils/format.js'
 
 export default function VentasPage() {
   const fetcher = useCallback(() => getVentas(), [])
@@ -109,7 +106,7 @@ function FragmentVenta({ venta, activa, abierta, onToggle, onCancelar }) {
           </button>
         </td>
         <td>{venta.id}</td>
-        <td>{venta.fechaVenta}</td>
+        <td>{formatFecha(venta.fechaVenta)}</td>
         <td>
           {venta.cliente
             ? `${venta.cliente.nombre} ${venta.cliente.apellido}`
