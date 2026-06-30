@@ -26,6 +26,7 @@ consultar reportes (bajo stock, resumen de ventas por día y mayor venta).
 - [Formato de errores](#formato-de-errores)
 - [Reglas de negocio](#reglas-de-negocio)
 - [Colección de Postman](#colección-de-postman)
+- [Créditos](#créditos)
 
 ---
 
@@ -354,3 +355,28 @@ importarse en Postman para probar todos los endpoints contra `http://localhost:8
 | `EstadoProducto` | `ACTIVO`, `INACTIVO` |
 | `EstadoCliente`  | `ACTIVO`, `INACTIVO` |
 | `EstadoVenta`    | `ACTIVA`, `ANULADA`  |
+
+---
+
+## Créditos
+
+El enunciado base de este proyecto proviene del trabajo práctico integrador final del curso
+**Desarrollo de APIs en Java con Spring Boot** de TodoCode Academy
+([@todocodeacademy](https://github.com/todocodeacademy) · [todocodeacademy.com](https://www.todocodeacademy.com)).
+
+La consigna original planteaba una API REST para la gestión de un bazar —CRUD de productos,
+clientes y ventas, junto con consultas de bajo stock, productos de una venta, resumen diario y
+mayor venta, aplicando el patrón DTO—, dejando el frontend fuera del alcance y el control de
+stock como mejora opcional.
+
+Sobre esa base, este repositorio incorpora numerosas extensiones propias:
+
+- **Frontend web completo** en React + Vite, con vistas de productos, clientes, ventas y reportes.
+- **Control de stock**: descuento automático al vender con validación de stock disponible, y
+  reposición de stock (`PATCH /productos/{id}/stock/reponer`).
+- **Anulación de ventas** con reposición automática del stock.
+- **Baja lógica (soft-delete)** y reactivación de productos y clientes, con estados
+  (`ACTIVO`/`INACTIVO`, `ACTIVA`/`ANULADA`) y filtro `incluirInactivos`.
+- **Ventas con detalle por ítem** (cantidad y subtotal por producto).
+- **Manejo de errores unificado** (`ApiError`) y **validaciones** con Bean Validation.
+- Rutas **RESTful versionadas** (`/api/v1`) con uso semántico de los métodos HTTP.
