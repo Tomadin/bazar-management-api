@@ -1,8 +1,10 @@
 package com.tomadin.bazar.services;
 
+import com.tomadin.bazar.dtos.request.ItemVentaRequest;
 import com.tomadin.bazar.dtos.request.VentaRequest;
 import com.tomadin.bazar.dtos.response.VentaResponse;
 import com.tomadin.bazar.entities.Cliente;
+import com.tomadin.bazar.entities.DetalleVenta;
 import com.tomadin.bazar.entities.Producto;
 import com.tomadin.bazar.entities.Venta;
 import com.tomadin.bazar.enums.EstadoVenta;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -38,32 +41,52 @@ public class VentaService implements IVentaService {
     @Override
     @Transactional
     public VentaResponse save(VentaRequest request) {
-        // Buscamos que el cliente exista en la BBDD
+        // El cliente debe existir
         Cliente cliente = clienteRepository.findById(request.getClienteId())
                 .orElseThrow(() -> new NotFoundException(
                         "Cliente no encontrado con el ID: " + request.getClienteId()));
 
-        // Verificamos que los productos existan en la BBDD
-        List<Producto> productos = productoRepository.findAllById(request.getProductoIds());
-        if (productos.size() != request.getProductoIds().size()) {
-            throw new NotFoundException("Uno o más productos no existen.");
+        if (!cliente.estaActivo()) {
+            throw new ConflictException(
+                    "El cliente " + cliente.getIdCliente() + " está inactivo; no puede realizar compras.");
         }
 
-        // Calculamos el total atraves del costo de cada producto
-        double total = productos.stream()
-                .mapToDouble(Producto::getCosto)
-                .sum();
-
-        // seteamos los atributos de Venta
         Venta venta = new Venta();
         venta.setCliente(cliente);
-        venta.setListaProductos(productos);
-        venta.setTotal(total);
         venta.setFechaVenta(LocalDate.now());
         venta.setEstado(EstadoVenta.ACTIVA);
 
-        // Persistimos
-        Venta guardada = ventaRepository.save(venta);
+        double total = 0.0;
+        List<DetalleVenta> detalles = new ArrayList<>();
+
+        // Un renglón por ítem: valida + descuenta stock y calcula subtotal
+        for (ItemVentaRequest item : request.getItems()) {
+            Producto producto = productoRepository.findById(item.getProductoId())
+                    .orElseThrow(() -> new NotFoundException(
+                            "Producto no encontrado con el ID: " + item.getProductoId()));
+
+            if (!producto.estaActivo()) {
+                throw new ConflictException(
+                        "El producto " + producto.getCodigoProducto() + " está inactivo; no se puede vender.");
+            }
+
+            producto.descontar(item.getCantidad()); // valida stock (409) y descuenta
+
+            double subtotal = producto.getCosto() * item.getCantidad();
+            total += subtotal;
+
+            DetalleVenta detalle = new DetalleVenta();
+            detalle.setProducto(producto);
+            detalle.setCantidad(item.getCantidad());
+            detalle.setSubtotal(subtotal);
+            detalle.setVenta(venta);
+            detalles.add(detalle);
+        }
+
+        venta.setDetalles(detalles);
+        venta.setTotal(total);
+
+        Venta guardada = ventaRepository.save(venta); // cascade persiste los detalles
         return ventaMapper.toResponse(guardada);
     }
 
@@ -94,6 +117,11 @@ public class VentaService implements IVentaService {
 
         if (venta.getEstado() == EstadoVenta.ANULADA) {
             throw new ConflictException("La venta ya se encuentra anulada.");
+        }
+
+        // Devolvemos al stock lo que se había descontado
+        for (DetalleVenta detalle : venta.getDetalles()) {
+            detalle.getProducto().reponer(detalle.getCantidad());
         }
 
         venta.setEstado(EstadoVenta.ANULADA);

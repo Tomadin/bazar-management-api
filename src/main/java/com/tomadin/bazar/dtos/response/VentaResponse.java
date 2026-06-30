@@ -15,5 +15,5 @@ public class VentaResponse {
     private Double total;
     private EstadoVenta estado;
     private ClienteResponse cliente;
-    private List<ProductoResponse> productos;
+    private List<DetalleVentaResponse> detalles;
 }

@@ -10,9 +10,11 @@ public interface IClienteService {
 
     public ClienteResponse getById(Long id);
 
-    public List<ClienteResponse> getAll();
+    public List<ClienteResponse> getAll(boolean incluirInactivos);
 
     public ClienteResponse update(Long id, ClienteRequest request);
+
+    public ClienteResponse activar(Long id);
 
     public void delete(Long id);
 

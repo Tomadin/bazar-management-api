@@ -3,6 +3,8 @@ package com.tomadin.bazar.services;
 import com.tomadin.bazar.dtos.request.ProductoRequest;
 import com.tomadin.bazar.dtos.response.ProductoResponse;
 import com.tomadin.bazar.entities.Producto;
+import com.tomadin.bazar.enums.EstadoProducto;
+import com.tomadin.bazar.exceptions.ConflictException;
 import com.tomadin.bazar.exceptions.NotFoundException;
 import com.tomadin.bazar.mappers.ProductoMapper;
 import com.tomadin.bazar.repositories.ProductoRepository;
@@ -25,6 +27,7 @@ public class ProductoService implements IProductoService {
     @Transactional
     public ProductoResponse save(ProductoRequest request) {
         Producto producto = productoMapper.toEntity(request);
+        producto.setEstado(EstadoProducto.ACTIVO);
         productoRepository.save(producto);
         return productoMapper.toResponse(producto);
     }
@@ -39,9 +42,11 @@ public class ProductoService implements IProductoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductoResponse> getAll() {
-        return productoRepository.findAll()
-                .stream()
+    public List<ProductoResponse> getAll(boolean incluirInactivos) {
+        List<Producto> productos = incluirInactivos
+                ? productoRepository.findAll()
+                : productoRepository.findByEstado(EstadoProducto.ACTIVO);
+        return productos.stream()
                 .map(productoMapper::toResponse)
                 .toList();
     }
@@ -52,6 +57,10 @@ public class ProductoService implements IProductoService {
         Producto producto = productoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Producto no encontrado con el ID: " + id));
 
+        if (!producto.estaActivo()) {
+            throw new ConflictException("El producto " + id + " está inactivo; reactivalo antes de editarlo.");
+        }
+
         productoMapper.updateEntityFromRequest(request, producto);
         Producto actualizado = productoRepository.save(producto);
         return productoMapper.toResponse(actualizado);
@@ -59,10 +68,46 @@ public class ProductoService implements IProductoService {
 
     @Override
     @Transactional
-    public void delete(Long id) {
-        if (!productoRepository.existsById(id)) {
-            throw new NotFoundException("Producto no encontrado con el ID: " + id);
+    public ProductoResponse descontarStock(Long id, Long cantidad) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Producto no encontrado con el ID: " + id));
+
+        if (!producto.estaActivo()) {
+            throw new ConflictException("El producto " + id + " está inactivo; no se puede ajustar su stock.");
         }
-        productoRepository.deleteById(id);
+
+        producto.descontar(cantidad); // valida stock (409) y descuenta en un solo lugar
+
+        Producto actualizado = productoRepository.save(producto);
+        return productoMapper.toResponse(actualizado);
+    }
+
+    @Override
+    @Transactional
+    public ProductoResponse activar(Long id) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Producto no encontrado con el ID: " + id));
+
+        if (producto.estaActivo()) {
+            throw new ConflictException("El producto " + id + " ya está activo.");
+        }
+
+        producto.setEstado(EstadoProducto.ACTIVO);
+        Producto activado = productoRepository.save(producto);
+        return productoMapper.toResponse(activado);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Producto no encontrado con el ID: " + id));
+
+        if (!producto.estaActivo()) {
+            throw new ConflictException("El producto " + id + " ya está inactivo.");
+        }
+
+        producto.setEstado(EstadoProducto.INACTIVO);
+        productoRepository.save(producto);
     }
 }

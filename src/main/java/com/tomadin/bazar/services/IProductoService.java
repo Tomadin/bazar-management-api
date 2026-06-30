@@ -10,9 +10,13 @@ public interface IProductoService {
 
     public ProductoResponse getById(Long id);
 
-    public List<ProductoResponse> getAll();
+    public List<ProductoResponse> getAll(boolean incluirInactivos);
 
     public ProductoResponse update(Long id, ProductoRequest request);
+
+    public ProductoResponse descontarStock(Long id, Long cantidad);
+
+    public ProductoResponse activar(Long id);
 
     public void delete(Long id);
 

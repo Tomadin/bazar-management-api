@@ -17,6 +17,7 @@ public class ClienteMapper {
         response.setNombre(cliente.getNombre());
         response.setApellido(cliente.getApellido());
         response.setDni(cliente.getDni());
+        response.setEstado(cliente.getEstado());
         return response;
     }
 

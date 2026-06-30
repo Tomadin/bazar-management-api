@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -27,13 +28,8 @@ public class Venta {
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false)
     private EstadoVenta estado;
-    @ManyToMany
-    @JoinTable(
-            name = "venta_producto",
-            joinColumns = @JoinColumn(name = "codigo_venta"),
-            inverseJoinColumns = @JoinColumn(name = "codigo_producto")
-    )
-    private List<Producto> listaProductos;
+    @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DetalleVenta> detalles = new ArrayList<>();
     @ManyToOne
     @JoinColumn(name = "id_cliente", nullable = false)
     private Cliente cliente;

@@ -18,6 +18,7 @@ public class ProductoMapper {
         response.setMarca(producto.getMarca());
         response.setCosto(producto.getCosto());
         response.setCantidadDisponible(producto.getCantidadDisponible());
+        response.setEstado(producto.getEstado());
         return response;
     }
 

@@ -1,0 +1,557 @@
+{
+  "info": {
+    "name": "Bazar Management API",
+    "description": "Colección para probar la API del bazar (Cliente, Producto, Venta).\n\nFlujo sugerido end-to-end:\n1) Crear cliente  2) Crear producto  3) Crear venta (descuenta stock)\n4) Ver producto (stock bajó)  5) Cancelar venta (stock vuelve)\n\nLos POST de creación guardan automáticamente el id en variables de colección ({{clienteId}}, {{productoId}}, {{ventaId}}).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081/api/v1" },
+    { "key": "clienteId", "value": "" },
+    { "key": "productoId", "value": "" },
+    { "key": "ventaId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Flujo E2E (Runner)",
+      "description": "Corré SOLO esta carpeta en el Collection Runner. Los requests están en orden de ejecución y validan el ciclo completo: crear -> vender -> stock baja -> cancelar -> stock vuelve -> soft-delete -> bloqueos -> reactivar.",
+      "item": [
+        {
+          "name": "1. Crear producto (stock 100)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 201', () => pm.response.to.have.status(201));",
+            "var b = pm.response.json();",
+            "pm.collectionVariables.set('productoId', b.id);",
+            "pm.test('nace ACTIVO', () => pm.expect(b.estado).to.eql('ACTIVO'));",
+            "pm.test('stock 100', () => pm.expect(b.cantidadDisponible).to.eql(100));"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Teclado\",\n  \"marca\": \"Logitech\",\n  \"costo\": 25.50,\n  \"cantidadDisponible\": 100\n}" },
+            "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] }
+          }
+        },
+        {
+          "name": "2. Crear cliente",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 201', () => pm.response.to.have.status(201));",
+            "var b = pm.response.json();",
+            "pm.collectionVariables.set('clienteId', b.id);",
+            "pm.test('nace ACTIVO', () => pm.expect(b.estado).to.eql('ACTIVO'));"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Juan\",\n  \"apellido\": \"Perez\",\n  \"dni\": \"12345678\"\n}" },
+            "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] }
+          }
+        },
+        {
+          "name": "3. Crear venta (cantidad 2)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 201', () => pm.response.to.have.status(201));",
+            "var b = pm.response.json();",
+            "pm.collectionVariables.set('ventaId', b.id);",
+            "pm.test('estado ACTIVA', () => pm.expect(b.estado).to.eql('ACTIVA'));",
+            "pm.test('tiene 1 detalle', () => pm.expect(b.detalles.length).to.eql(1));",
+            "pm.test('total = 51', () => pm.expect(b.total).to.eql(51.0));"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"items\": [\n    { \"productoId\": {{productoId}}, \"cantidad\": 2 }\n  ]\n}" },
+            "url": { "raw": "{{baseUrl}}/ventas", "host": ["{{baseUrl}}"], "path": ["ventas"] }
+          }
+        },
+        {
+          "name": "4. Verificar stock descontado (98)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "pm.test('stock = 98', () => pm.expect(pm.response.json().cantidadDisponible).to.eql(98));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}"] }
+          }
+        },
+        {
+          "name": "5. Cancelar venta",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "pm.test('estado ANULADA', () => pm.expect(pm.response.json().estado).to.eql('ANULADA'));"
+          ] } } ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/ventas/{{ventaId}}/cancelar", "host": ["{{baseUrl}}"], "path": ["ventas", "{{ventaId}}", "cancelar"] }
+          }
+        },
+        {
+          "name": "6. Verificar stock repuesto (100)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "pm.test('stock = 100', () => pm.expect(pm.response.json().cantidadDisponible).to.eql(100));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}"] }
+          }
+        },
+        {
+          "name": "7. Desactivar cliente (soft-delete)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 204', () => pm.response.to.have.status(204));"
+          ] } } ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clientes/{{clienteId}}", "host": ["{{baseUrl}}"], "path": ["clientes", "{{clienteId}}"] }
+          }
+        },
+        {
+          "name": "8. Cliente NO aparece en listado activos",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "var ids = pm.response.json().map(c => c.id);",
+            "pm.test('no esta el inactivo', () => pm.expect(ids).to.not.include(Number(pm.collectionVariables.get('clienteId'))));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] }
+          }
+        },
+        {
+          "name": "9. Cliente SI accesible por id (INACTIVO)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "pm.test('estado INACTIVO', () => pm.expect(pm.response.json().estado).to.eql('INACTIVO'));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clientes/{{clienteId}}", "host": ["{{baseUrl}}"], "path": ["clientes", "{{clienteId}}"] }
+          }
+        },
+        {
+          "name": "10. Vender con cliente inactivo -> 409",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 409', () => pm.response.to.have.status(409));"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"items\": [\n    { \"productoId\": {{productoId}}, \"cantidad\": 1 }\n  ]\n}" },
+            "url": { "raw": "{{baseUrl}}/ventas", "host": ["{{baseUrl}}"], "path": ["ventas"] }
+          }
+        },
+        {
+          "name": "11. Reactivar cliente",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "pm.test('estado ACTIVO', () => pm.expect(pm.response.json().estado).to.eql('ACTIVO'));"
+          ] } } ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clientes/{{clienteId}}/activar", "host": ["{{baseUrl}}"], "path": ["clientes", "{{clienteId}}", "activar"] }
+          }
+        },
+        {
+          "name": "12. Desactivar producto",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 204', () => pm.response.to.have.status(204));"
+          ] } } ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}"] }
+          }
+        },
+        {
+          "name": "13. Descontar stock de producto inactivo -> 409",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 409', () => pm.response.to.have.status(409));"
+          ] } } ],
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"cantidad\": 1\n}" },
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}/stock", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}", "stock"] }
+          }
+        },
+        {
+          "name": "14. Reactivar producto (limpieza)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "pm.test('estado ACTIVO', () => pm.expect(pm.response.json().estado).to.eql('ACTIVO'));"
+          ] } } ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}/activar", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}", "activar"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Seed / Carga inicial",
+      "description": "Carga de datos de prueba: 12 productos + 6 clientes. Run folder para crearlos en lote. Correr una vez sobre base limpia (en una segunda corrida los clientes dan 409 por DNI duplicado).",
+      "item": [
+        {
+          "name": "Productos (12)",
+          "item": [
+            {
+              "name": "Producto - Teclado",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Teclado\",\n  \"marca\": \"Logitech\",\n  \"costo\": 25.50,\n  \"cantidadDisponible\": 100\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Mouse inalámbrico",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Mouse inalámbrico\",\n  \"marca\": \"Logitech\",\n  \"costo\": 18.99,\n  \"cantidadDisponible\": 150\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Auriculares gamer",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Auriculares gamer\",\n  \"marca\": \"Redragon\",\n  \"costo\": 45.00,\n  \"cantidadDisponible\": 80\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Monitor 24 pulgadas",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Monitor 24 pulgadas\",\n  \"marca\": \"Samsung\",\n  \"costo\": 189.90,\n  \"cantidadDisponible\": 30\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Pendrive 64GB",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Pendrive 64GB\",\n  \"marca\": \"Kingston\",\n  \"costo\": 9.75,\n  \"cantidadDisponible\": 200\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Cargador USB-C",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Cargador USB-C\",\n  \"marca\": \"Genius\",\n  \"costo\": 12.30,\n  \"cantidadDisponible\": 120\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Parlante Bluetooth",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Parlante Bluetooth\",\n  \"marca\": \"Sony\",\n  \"costo\": 59.99,\n  \"cantidadDisponible\": 45\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Webcam HD",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Webcam HD\",\n  \"marca\": \"Genius\",\n  \"costo\": 32.40,\n  \"cantidadDisponible\": 60\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Cable HDMI 2 metros",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Cable HDMI 2 metros\",\n  \"marca\": \"Noganet\",\n  \"costo\": 6.50,\n  \"cantidadDisponible\": 300\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Silla gamer reclinable",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Silla gamer reclinable\",\n  \"marca\": \"Redragon\",\n  \"costo\": 245.00,\n  \"cantidadDisponible\": 15\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Mochila para notebook",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Mochila para notebook\",\n  \"marca\": \"Stanley\",\n  \"costo\": 38.20,\n  \"cantidadDisponible\": 70\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            },
+            {
+              "name": "Producto - Lámpara LED escritorio",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Lámpara LED escritorio\",\n  \"marca\": \"Philips\",\n  \"costo\": 21.80,\n  \"cantidadDisponible\": 90\n}" }, "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] } }
+            }
+          ]
+        },
+        {
+          "name": "Clientes (6)",
+          "item": [
+            {
+              "name": "Cliente - Juan Perez",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Juan\",\n  \"apellido\": \"Perez\",\n  \"dni\": \"30111222\"\n}" }, "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] } }
+            },
+            {
+              "name": "Cliente - Maria Gomez",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Maria\",\n  \"apellido\": \"Gomez\",\n  \"dni\": \"28333444\"\n}" }, "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] } }
+            },
+            {
+              "name": "Cliente - Carlos Lopez",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Carlos\",\n  \"apellido\": \"Lopez\",\n  \"dni\": \"33555666\"\n}" }, "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] } }
+            },
+            {
+              "name": "Cliente - Lucia Fernandez",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Lucia\",\n  \"apellido\": \"Fernandez\",\n  \"dni\": \"31777888\"\n}" }, "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] } }
+            },
+            {
+              "name": "Cliente - Diego Martinez",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Diego\",\n  \"apellido\": \"Martinez\",\n  \"dni\": \"27999000\"\n}" }, "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] } }
+            },
+            {
+              "name": "Cliente - Sofia Ramirez",
+              "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('status 201', () => pm.response.to.have.status(201));" ] } } ],
+              "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Sofia\",\n  \"apellido\": \"Ramirez\",\n  \"dni\": \"35121212\"\n}" }, "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] } }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Clientes",
+      "item": [
+        {
+          "name": "Listar clientes (solo activos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] }
+          }
+        },
+        {
+          "name": "Listar clientes (incluyendo inactivos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clientes?incluirInactivos=true", "host": ["{{baseUrl}}"], "path": ["clientes"], "query": [ { "key": "incluirInactivos", "value": "true" } ] }
+          }
+        },
+        {
+          "name": "Obtener cliente por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clientes/{{clienteId}}", "host": ["{{baseUrl}}"], "path": ["clientes", "{{clienteId}}"] }
+          }
+        },
+        {
+          "name": "Crear cliente (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('clienteId', pm.response.json().id);",
+                  "  console.log('clienteId =', pm.collectionVariables.get('clienteId'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Juan\",\n  \"apellido\": \"Perez\",\n  \"dni\": \"12345678\"\n}" },
+            "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] }
+          }
+        },
+        {
+          "name": "Actualizar cliente (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Juan\",\n  \"apellido\": \"Gomez\",\n  \"dni\": \"12345678\"\n}" },
+            "url": { "raw": "{{baseUrl}}/clientes/{{clienteId}}", "host": ["{{baseUrl}}"], "path": ["clientes", "{{clienteId}}"] }
+          }
+        },
+        {
+          "name": "Desactivar cliente / soft-delete (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clientes/{{clienteId}}", "host": ["{{baseUrl}}"], "path": ["clientes", "{{clienteId}}"] }
+          }
+        },
+        {
+          "name": "Activar cliente (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clientes/{{clienteId}}/activar", "host": ["{{baseUrl}}"], "path": ["clientes", "{{clienteId}}", "activar"] }
+          }
+        },
+        {
+          "name": "[error] Crear cliente DNI duplicado (409)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Otro\",\n  \"apellido\": \"Cliente\",\n  \"dni\": \"12345678\"\n}" },
+            "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] }
+          }
+        },
+        {
+          "name": "[error] Crear cliente inválido (400)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"\",\n  \"apellido\": \"X\",\n  \"dni\": \"123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Productos",
+      "item": [
+        {
+          "name": "Listar productos (solo activos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] }
+          }
+        },
+        {
+          "name": "Listar productos (incluyendo inactivos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos?incluirInactivos=true", "host": ["{{baseUrl}}"], "path": ["productos"], "query": [ { "key": "incluirInactivos", "value": "true" } ] }
+          }
+        },
+        {
+          "name": "Obtener producto por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}"] }
+          }
+        },
+        {
+          "name": "Crear producto (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('productoId', pm.response.json().id);",
+                  "  console.log('productoId =', pm.collectionVariables.get('productoId'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Teclado\",\n  \"marca\": \"Logitech\",\n  \"costo\": 25.50,\n  \"cantidadDisponible\": 100\n}" },
+            "url": { "raw": "{{baseUrl}}/productos", "host": ["{{baseUrl}}"], "path": ["productos"] }
+          }
+        },
+        {
+          "name": "Descontar stock (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"cantidad\": 5\n}" },
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}/stock", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}", "stock"] }
+          }
+        },
+        {
+          "name": "Desactivar producto / soft-delete (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}"] }
+          }
+        },
+        {
+          "name": "Activar producto (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}/activar", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}", "activar"] }
+          }
+        },
+        {
+          "name": "[error] Descontar stock insuficiente (409)",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"cantidad\": 999999\n}" },
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}/stock", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}", "stock"] }
+          }
+        },
+        {
+          "name": "[error] Descontar cantidad inválida (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"cantidad\": -3\n}" },
+            "url": { "raw": "{{baseUrl}}/productos/{{productoId}}/stock", "host": ["{{baseUrl}}"], "path": ["productos", "{{productoId}}", "stock"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ventas",
+      "item": [
+        {
+          "name": "Listar ventas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/ventas", "host": ["{{baseUrl}}"], "path": ["ventas"] }
+          }
+        },
+        {
+          "name": "Obtener venta por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/ventas/{{ventaId}}", "host": ["{{baseUrl}}"], "path": ["ventas", "{{ventaId}}"] }
+          }
+        },
+        {
+          "name": "Crear venta (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('ventaId', pm.response.json().id);",
+                  "  console.log('ventaId =', pm.collectionVariables.get('ventaId'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"items\": [\n    { \"productoId\": {{productoId}}, \"cantidad\": 2 }\n  ]\n}" },
+            "url": { "raw": "{{baseUrl}}/ventas", "host": ["{{baseUrl}}"], "path": ["ventas"] }
+          }
+        },
+        {
+          "name": "Cancelar venta (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/ventas/{{ventaId}}/cancelar", "host": ["{{baseUrl}}"], "path": ["ventas", "{{ventaId}}", "cancelar"] }
+          }
+        },
+        {
+          "name": "[error] Crear venta sin items (400)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"items\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/ventas", "host": ["{{baseUrl}}"], "path": ["ventas"] }
+          }
+        }
+      ]
+    }
+  ]
+}

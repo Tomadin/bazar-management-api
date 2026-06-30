@@ -1,5 +1,6 @@
 package com.tomadin.bazar.entities;
 
+import com.tomadin.bazar.enums.EstadoCliente;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,4 +24,11 @@ public class Cliente {
     private String apellido;
     @Column(name = "dni", nullable = false, unique = true)
     private String dni;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", nullable = false)
+    private EstadoCliente estado;
+
+    public boolean estaActivo() {
+        return estado == EstadoCliente.ACTIVO;
+    }
 }
